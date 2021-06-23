@@ -1,18 +1,13 @@
-import torch
-import torch.nn as nn
-import torchvision
-import torchvision.transforms as transforms
-
 # Device configuration
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Hyper parameters
-num_epochs = 11  # 5
-num_classes = 33
+num_epochs = 20  # 5
+num_classes = 33  # 33
 batch_size = 40
 learning_rate = 0.001
 
-# MNIST dataset for alternative testing purposes
+# MNIST dataset as alternative
 # train_dataset = torchvision.datasets.MNIST(root='../../data/',
 #                                            train=True,
 #                                            transform=transforms.ToTensor(),
@@ -22,10 +17,9 @@ learning_rate = 0.001
 #                                           train=False,
 #                                           transform=transforms.ToTensor())
 
-# Tried this to convert rgb images to grayscale, something went wrong
+# Grayscale experiment
 # trainTransform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
-#                                      transforms.ToTensor(),
-#                                      transforms.Normalize(0.5, 0.5)])
+#                                     transforms.ToTensor()])
 
 TRAINING_DIR = 'data/training'
 train_dataset = torchvision.datasets.ImageFolder(root=TRAINING_DIR, transform=transforms.ToTensor())
@@ -43,31 +37,29 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                           batch_size=batch_size,
                                           shuffle=False)
 
-
-# Convolutional neural network (three convolutional layers)
 class ConvNet(nn.Module):
     def __init__(self, num_classes=num_classes):
         super(ConvNet, self).__init__()
-        # 40x3x278x278, 'cause batch size is 40, number of channels is 3 (RGB) and image size is 278x278
+        # 40x3x28x28, 'cause batch size is 40, number of channels is 3 (RGB) and image size is 28x28
         self.layer1 = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=(3, 3)),  # took 40x3x278x278, produced 40x16x276x276
+            nn.Conv2d(3, 16, kernel_size=(3, 3), padding=2),  # took 40x3x28x28, produced 40x16x30x30
             nn.BatchNorm2d(16),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)  # took 40x16x276x276, produced 40x16x138x138
+            nn.MaxPool2d(kernel_size=2)#, stride=2)  # took 40x16x30x30, produced 40x16x15x15
         )
         self.layer2 = nn.Sequential(
-            nn.Conv2d(16, 32, kernel_size=(3, 3)),  # took 40x16x138x138, produced 40x32x136x136
+            nn.Conv2d(16, 32, kernel_size=(3, 3), padding=2),  # took 40x16x15x15, produced 40x32x17x17
             nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)  # took 40x32x136x136, produced 40x32x68x68
+            nn.MaxPool2d(kernel_size=2)#, stride=2)  # took 40x32x17x17, produced 40x32x8x8
         )
         self.layer3 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=(3, 3)),  # took 40x32x68x68, produced 40x64x66x66
+            nn.Conv2d(32, 64, kernel_size=(3, 3), padding=2),  # took 40x32x8x8, produced 40x64x10x10
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)  # took 40x64x66x66, produced 40x64x33x33
+            nn.MaxPool2d(kernel_size=2)#, stride=2)  # took 40x64x10x10, produced 40x64x5x5
         )
-        self.fc1 = nn.Linear(64*33*33, 512)  # took 40x(64*33*33)=40x69696, produced 40x512
+        self.fc1 = nn.Linear(64*5*5, 512)  # took 40x(64*5*5)=40x1600, produced 40x512
         self.fc2 = nn.Linear(512, num_classes)  # took 40x512, produced 40x33
 
     def forward(self, x):
@@ -84,7 +76,8 @@ model = ConvNet(num_classes).to(device)
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # Trying different optimizers
 
 # Train the model
 print_freq = 107  # for batch_size=40, 'cause then we have 1391 batches, 1391/107=13 - looks clean
